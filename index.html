@@ -118,6 +118,10 @@
       padding: 0;
     }
 
+    .ctrl-btn.play span {
+      display: inline-block;
+    }
+
     #icon-pause { display: none; }
     .lp-container.playing #icon-play { display: none; }
     .lp-container.playing #icon-pause { display: inline-block; }
@@ -167,8 +171,8 @@
       color: #777;
       max-width: 360px;
       margin: 2px auto 0;
+      white-space: nowrap;
     }
-
   </style>
 </head>
 
@@ -182,14 +186,14 @@
     <div class="track-sub" id="track-sub">LP Playlist</div>
 
     <div class="controls">
-      <button class="ctrl-btn prev" id="btn-prev">⏮</button>
+      <button class="ctrl-btn prev" id="btn-prev" title="이전 곡">⏮</button>
 
-      <button class="ctrl-btn play" id="btn-play">
+      <button class="ctrl-btn play" id="btn-play" title="재생/일시정지">
         <span id="icon-play">▶</span>
         <span id="icon-pause">⏸</span>
       </button>
 
-      <button class="ctrl-btn next" id="btn-next">⏭</button>
+      <button class="ctrl-btn next" id="btn-next" title="다음 곡">⏭</button>
     </div>
 
     <div class="progress-container">
@@ -207,32 +211,47 @@
   </div>
 
   <script>
-    /* YouTube API */
+    // YouTube API 로드
     var tag = document.createElement("script");
     tag.src = "https://www.youtube.com/iframe_api";
     document.body.appendChild(tag);
 
-    var playlist = ["kAAcl3nIe24", "9uxYuIpvsjw", "iv9rmTEaECw"];
-    var discImages = ["lp-image1.png", "lp-image2.png", "lp-image3.png"];
-    var trackTitles = ["Track 1", "Track 2", "Track 3"];
+    // 플레이리스트 / 이미지 / 제목
+    var playlist = [
+      "kAAcl3nIe24",
+      "9uxYuIpvsjw",
+      "iv9rmTEaECw"
+    ];
+
+    var discImages = [
+      "lp-image1.png",
+      "lp-image2.png",
+      "lp-image3.png"
+    ];
+
+    var trackTitles = [
+      "Track 1",
+      "Track 2",
+      "Track 3"
+    ];
 
     var currentIndex = 0;
     var player = null;
     var isPlaying = false;
-    var startedOnce = false;
     var updateTimer = null;
 
-    var lpContainer = document.getElementById("lp-container");
-    var lpDisc = document.getElementById("lp-disc");
-    var btnPrev = document.getElementById("btn-prev");
-    var btnPlay = document.getElementById("btn-play");
-    var btnNext = document.getElementById("btn-next");
-    var trackTitleEl = document.getElementById("track-title");
-    var trackSubEl = document.getElementById("track-sub");
-    var progressFill = document.getElementById("progress-fill");
-    var progressKnob = document.getElementById("progress-knob");
+    // DOM
+    var lpContainer   = document.getElementById("lp-container");
+    var lpDisc        = document.getElementById("lp-disc");
+    var btnPrev       = document.getElementById("btn-prev");
+    var btnPlay       = document.getElementById("btn-play");
+    var btnNext       = document.getElementById("btn-next");
+    var trackTitleEl  = document.getElementById("track-title");
+    var trackSubEl    = document.getElementById("track-sub");
+    var progressFill  = document.getElementById("progress-fill");
+    var progressKnob  = document.getElementById("progress-knob");
     var timeCurrentEl = document.getElementById("time-current");
-    var timeTotalEl = document.getElementById("time-total");
+    var timeTotalEl   = document.getElementById("time-total");
 
     function formatTime(sec) {
       if (!isFinite(sec) || sec < 0) sec = 0;
@@ -242,116 +261,134 @@
     }
 
     function updateVisual() {
-      lpDisc.style.backgroundImage = `url('${discImages[currentIndex]}')`;
-      trackTitleEl.textContent = trackTitles[currentIndex];
-      trackSubEl.textContent = `LP Playlist • ${currentIndex + 1}/${playlist.length}`;
+      lpDisc.style.backgroundImage = 'url("' + discImages[currentIndex] + '")';
+      trackTitleEl.textContent = trackTitles[currentIndex] || ("Track " + (currentIndex + 1));
+      trackSubEl.textContent   = "LP Playlist • " + (currentIndex + 1) + "/" + playlist.length;
 
       progressFill.style.width = "0%";
-      progressKnob.style.left = "0%";
+      progressKnob.style.left  = "0%";
       timeCurrentEl.textContent = "0:00";
-      timeTotalEl.textContent = "0:00";
+      timeTotalEl.textContent   = "0:00";
     }
 
+    // 전역 함수: YouTube IFrame API가 호출
     function onYouTubeIframeAPIReady() {
       player = new YT.Player("player", {
         height: "0",
         width: "0",
-        videoId: playlist[currentIndex],
-        playerVars: { playsinline: 1, autoplay: 0, controls: 0, rel: 0 },
+        videoId: playlist[currentIndex], // 첫 곡 로드만, 자동재생 X
+        playerVars: {
+          playsinline: 1,
+          autoplay: 0,
+          controls: 0,
+          rel: 0
+        },
         events: {
           onReady: onPlayerReady,
-          onStateChange: onStateChange,
-        },
+          onStateChange: onPlayerStateChange
+        }
       });
     }
 
     function onPlayerReady() {
       updateVisual();
 
-      btnPlay.addEventListener("click", togglePlay);
-      btnPrev.addEventListener("click", prevTrack);
-      btnNext.addEventListener("click", nextTrack);
+      // ▶ / ⏸ 토글
+      btnPlay.addEventListener("click", function() {
+        if (!player) return;
+
+        if (isPlaying) {
+          player.pauseVideo();
+        } else {
+          player.playVideo();
+        }
+      });
+
+      // 이전 곡
+      btnPrev.addEventListener("click", function() {
+        if (!player) return;
+        currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+        updateVisual();
+        player.loadVideoById(playlist[currentIndex]);
+        player.playVideo();
+      });
+
+      // 다음 곡
+      btnNext.addEventListener("click", function() {
+        if (!player) return;
+        currentIndex = (currentIndex + 1) % playlist.length;
+        updateVisual();
+        player.loadVideoById(playlist[currentIndex]);
+        player.playVideo();
+      });
 
       resizeLayout();
       window.addEventListener("resize", resizeLayout);
     }
 
-    function togglePlay() {
-      if (!player) return;
-
-      if (!startedOnce) {
-        startedOnce = true;
-        playCurrent();
-        return;
-      }
-
-      if (isPlaying) player.pauseVideo();
-      else player.playVideo();
-    }
-
-    function playCurrent() {
-      updateVisual();
-      player.loadVideoById(playlist[currentIndex]);
-      player.playVideo();
-    }
-
-    function prevTrack() {
-      currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-      playCurrent();
-    }
-
-    function nextTrack() {
-      currentIndex = (currentIndex + 1) % playlist.length;
-      playCurrent();
-    }
-
-    function onStateChange(event) {
+    function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.PLAYING) {
         isPlaying = true;
         lpContainer.classList.add("playing");
         startProgress();
       }
+
       if (event.data === YT.PlayerState.PAUSED) {
         isPlaying = false;
         lpContainer.classList.remove("playing");
         stopProgress();
       }
+
       if (event.data === YT.PlayerState.ENDED) {
         isPlaying = false;
         lpContainer.classList.remove("playing");
         stopProgress();
-        nextTrack(); // 자동 다음곡
+
+        // 곡 끝나면 자동 다음 곡
+        currentIndex = (currentIndex + 1) % playlist.length;
+        updateVisual();
+        player.loadVideoById(playlist[currentIndex]);
+        player.playVideo();
       }
     }
 
     function startProgress() {
       stopProgress();
-      updateTimer = setInterval(() => {
-        var cur = player.getCurrentTime();
-        var total = player.getDuration();
+      updateTimer = setInterval(function () {
+        if (!player || typeof player.getCurrentTime !== "function") return;
+        var cur   = player.getCurrentTime() || 0;
+        var total = player.getDuration()   || 0;
+
         timeCurrentEl.textContent = formatTime(cur);
-        timeTotalEl.textContent = formatTime(total);
-        var percent = (cur / total) * 100;
+        timeTotalEl.textContent   = formatTime(total);
+
+        var percent = total > 0 ? (cur / total) * 100 : 0;
         progressFill.style.width = percent + "%";
-        progressKnob.style.left = percent + "%";
+        progressKnob.style.left  = percent + "%";
       }, 500);
     }
 
     function stopProgress() {
-      if (updateTimer) clearInterval(updateTimer);
-      updateTimer = null;
+      if (updateTimer) {
+        clearInterval(updateTimer);
+        updateTimer = null;
+      }
     }
 
     function resizeLayout() {
-      let c = lpContainer;
+      var c = lpContainer;
       c.style.transform = "scale(1)";
-      let W = c.offsetWidth, H = c.offsetHeight;
 
-      let aW = window.innerWidth - 16;
-      let aH = window.innerHeight - 16;
+      var W = c.offsetWidth;
+      var H = c.offsetHeight;
 
-      let scale = Math.min(1, aW / W, aH / H);
-      c.style.transform = `scale(${scale})`;
+      var aW = window.innerWidth  - 16;
+      var aH = window.innerHeight - 16;
+
+      if (aW <= 0 || aH <= 0) return;
+
+      var scale = Math.min(1, aW / W, aH / H);
+      c.style.transform = "scale(" + scale + ")";
     }
 
     window.addEventListener("load", resizeLayout);

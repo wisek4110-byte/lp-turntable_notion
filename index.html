@@ -6,7 +6,7 @@
 
   <style>
     :root {
-      --base-width: 420; /* 기준 가로(px) – 디자인 기준 크기 */
+      --base-width: 420;
     }
 
     body {
@@ -21,7 +21,6 @@
       padding: 8px 0;
     }
 
-    /* 전체 컨테이너 – 기준 크기 */
     .lp-container {
       width: calc(var(--base-width) * 1px);
       box-sizing: border-box;
@@ -30,18 +29,17 @@
       border-radius: 12px;
       background: #fcfaf6;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      transform-origin: top center; /* 스케일 기준점 */
+      transform-origin: top center;
     }
 
     .lp-disc-wrapper {
       width: 320px;
       max-width: 100%;
-      aspect-ratio: 1 / 1; /* 정사각형 LP */
+      aspect-ratio: 1 / 1;
       margin: 0 auto 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
     }
 
     .lp-disc {
@@ -52,7 +50,7 @@
       background-position: center;
       box-shadow: 0 6px 16px rgba(0,0,0,0.25);
       animation: spin 3.2s linear infinite;
-      animation-play-state: paused; /* 기본 정지 */
+      animation-play-state: paused;
     }
 
     .lp-container.playing .lp-disc {
@@ -64,7 +62,6 @@
       to   { transform: rotate(360deg); }
     }
 
-    /* 트랙 정보 */
     .track-title {
       text-align: center;
       font-size: 0.95rem;
@@ -80,14 +77,13 @@
       color: #888;
     }
 
-    /* 컨트롤 버튼 영역 */
     .controls {
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 16px;
       margin-bottom: 10px;
-      min-height: 40px; /* 버튼 줄 바뀜 방지 */
+      min-height: 40px;
     }
 
     .ctrl-btn {
@@ -112,7 +108,6 @@
       background: rgba(0,0,0,0.12);
     }
 
-    /* 재생 버튼 – 고정 크기 */
     .ctrl-btn.play {
       width: 40px;
       height: 40px;
@@ -123,25 +118,10 @@
       padding: 0;
     }
 
-    .ctrl-btn.play span {
-      display: inline-block;
-    }
+    #icon-pause { display: none; }
+    .lp-container.playing #icon-play { display: none; }
+    .lp-container.playing #icon-pause { display: inline-block; }
 
-    /* 기본: play 아이콘만 표시 */
-    #icon-pause {
-      display: none;
-    }
-
-    /* 재생 중: pause만 표시 (크기는 그대로) */
-    .lp-container.playing #icon-play {
-      display: none;
-    }
-
-    .lp-container.playing #icon-pause {
-      display: inline-block;
-    }
-
-    /* 재생바 */
     .progress-container {
       width: 360px;
       max-width: 100%;
@@ -187,35 +167,31 @@
       color: #777;
       max-width: 360px;
       margin: 2px auto 0;
-      white-space: nowrap;
     }
+
   </style>
 </head>
-<body>
 
+<body>
   <div class="lp-container" id="lp-container">
-    <!-- LP 디스크 -->
-    <div class="lp-disc-wrapper" id="lp-disc-area">
+    <div class="lp-disc-wrapper">
       <div class="lp-disc" id="lp-disc"></div>
     </div>
 
-    <!-- 곡 정보 -->
     <div class="track-title" id="track-title">Track 1</div>
     <div class="track-sub" id="track-sub">LP Playlist</div>
 
-    <!-- 컨트롤 버튼 -->
     <div class="controls">
-      <button class="ctrl-btn prev" id="btn-prev" title="이전 곡">⏮</button>
+      <button class="ctrl-btn prev" id="btn-prev">⏮</button>
 
-      <button class="ctrl-btn play" id="btn-play" title="재생/일시정지">
+      <button class="ctrl-btn play" id="btn-play">
         <span id="icon-play">▶</span>
         <span id="icon-pause">⏸</span>
       </button>
 
-      <button class="ctrl-btn next" id="btn-next" title="다음 곡">⏭</button>
+      <button class="ctrl-btn next" id="btn-next">⏭</button>
     </div>
 
-    <!-- 재생바 -->
     <div class="progress-container">
       <div class="progress-bar" id="progress-bar">
         <div class="progress-fill" id="progress-fill"></div>
@@ -227,57 +203,37 @@
       <span id="time-total">0:00</span>
     </div>
 
-    <!-- 유튜브 플레이어 (숨김) -->
     <div id="player"></div>
   </div>
 
   <script>
-    /*************** YouTube API 로드 ***************/
+    /* YouTube API */
     var tag = document.createElement("script");
     tag.src = "https://www.youtube.com/iframe_api";
     document.body.appendChild(tag);
 
-    /*************** 플레이리스트 / 이미지 / 제목 ***************/
-    var playlist = [
-      "kAAcl3nIe24",
-      "9uxYuIpvsjw",
-      "iv9rmTEaECw"
-    ];
-
-    var discImages = [
-      "lp-image1.png",
-      "lp-image2.png",
-      "lp-image3.png"
-    ];
-
-    var trackTitles = [
-      "Track 1",
-      "Track 2",
-      "Track 3"
-    ];
+    var playlist = ["kAAcl3nIe24", "9uxYuIpvsjw", "iv9rmTEaECw"];
+    var discImages = ["lp-image1.png", "lp-image2.png", "lp-image3.png"];
+    var trackTitles = ["Track 1", "Track 2", "Track 3"];
 
     var currentIndex = 0;
     var player = null;
-    var startedOnce = false;
-    var audioEnabled = false;
     var isPlaying = false;
+    var startedOnce = false;
     var updateTimer = null;
 
-    // DOM
-    var lpContainer   = document.getElementById("lp-container");
-    var lpDiscArea    = document.getElementById("lp-disc-area");
-    var lpDisc        = document.getElementById("lp-disc");
-    var btnPrev       = document.getElementById("btn-prev");
-    var btnPlay       = document.getElementById("btn-play");
-    var btnNext       = document.getElementById("btn-next");
-    var trackTitleEl  = document.getElementById("track-title");
-    var trackSubEl    = document.getElementById("track-sub");
-    var progressFill  = document.getElementById("progress-fill");
-    var progressKnob  = document.getElementById("progress-knob");
+    var lpContainer = document.getElementById("lp-container");
+    var lpDisc = document.getElementById("lp-disc");
+    var btnPrev = document.getElementById("btn-prev");
+    var btnPlay = document.getElementById("btn-play");
+    var btnNext = document.getElementById("btn-next");
+    var trackTitleEl = document.getElementById("track-title");
+    var trackSubEl = document.getElementById("track-sub");
+    var progressFill = document.getElementById("progress-fill");
+    var progressKnob = document.getElementById("progress-knob");
     var timeCurrentEl = document.getElementById("time-current");
-    var timeTotalEl   = document.getElementById("time-total");
+    var timeTotalEl = document.getElementById("time-total");
 
-    /*************** 시간 포맷 ***************/
     function formatTime(sec) {
       if (!isFinite(sec) || sec < 0) sec = 0;
       var m = Math.floor(sec / 60);
@@ -285,175 +241,120 @@
       return m + ":" + (s < 10 ? "0" + s : s);
     }
 
-    /*************** 곡 비주얼 업데이트 ***************/
-    function updateVisualForTrack() {
-      lpDisc.style.backgroundImage = 'url("' + discImages[currentIndex] + '")';
-      trackTitleEl.textContent = trackTitles[currentIndex] || ("Track " + (currentIndex + 1));
-      trackSubEl.textContent = "LP Playlist • " + (currentIndex + 1) + " / " + playlist.length;
+    function updateVisual() {
+      lpDisc.style.backgroundImage = `url('${discImages[currentIndex]}')`;
+      trackTitleEl.textContent = trackTitles[currentIndex];
+      trackSubEl.textContent = `LP Playlist • ${currentIndex + 1}/${playlist.length}`;
 
       progressFill.style.width = "0%";
-      progressKnob.style.left  = "0%";
+      progressKnob.style.left = "0%";
       timeCurrentEl.textContent = "0:00";
-      timeTotalEl.textContent   = "0:00";
+      timeTotalEl.textContent = "0:00";
     }
 
-    /*************** YouTube API Ready ***************/
     function onYouTubeIframeAPIReady() {
       player = new YT.Player("player", {
         height: "0",
         width: "0",
-        videoId: playlist[0],
-        playerVars: {
-          playsinline: 1,
-          autoplay: 0,
-          controls: 0,
-          rel: 0
-        },
+        videoId: playlist[currentIndex],
+        playerVars: { playsinline: 1, autoplay: 0, controls: 0, rel: 0 },
         events: {
           onReady: onPlayerReady,
-          onStateChange: onPlayerStateChange
-        }
+          onStateChange: onStateChange,
+        },
       });
     }
 
     function onPlayerReady() {
-      updateVisualForTrack();
-      setupEvents();
+      updateVisual();
+
+      btnPlay.addEventListener("click", togglePlay);
+      btnPrev.addEventListener("click", prevTrack);
+      btnNext.addEventListener("click", nextTrack);
+
       resizeLayout();
-    }
-
-    /*************** 이벤트 바인딩 ***************/
-    function setupEvents() {
-      // LP 클릭: 재생/일시정지
-      lpDiscArea.addEventListener("click", function () {
-        if (!audioEnabled) audioEnabled = true;
-        handleSingleClick();
-      });
-
-      // 버튼
-      btnPlay.addEventListener("click", function () {
-        handleSingleClick();
-      });
-
-      btnPrev.addEventListener("click", function () {
-        prevTrack();
-      });
-
-      btnNext.addEventListener("click", function () {
-        nextTrack();
-      });
-
-      // 창 크기 변경 시 스케일 조정
       window.addEventListener("resize", resizeLayout);
     }
 
-    /*************** 단일 클릭 = 재생/일시정지 ***************/
-    function handleSingleClick() {
+    function togglePlay() {
       if (!player) return;
 
       if (!startedOnce) {
+        startedOnce = true;
         playCurrent();
         return;
       }
 
-      if (isPlaying) {
-        player.pauseVideo();
-      } else {
-        player.playVideo();
-      }
+      if (isPlaying) player.pauseVideo();
+      else player.playVideo();
     }
 
-    /*************** 재생 / 이전 / 다음 ***************/
     function playCurrent() {
-      if (!player) return;
-      startedOnce = true;
-      updateVisualForTrack();
+      updateVisual();
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
     }
 
     function prevTrack() {
-      if (!player) return;
       currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
       playCurrent();
     }
 
     function nextTrack() {
-      if (!player) return;
       currentIndex = (currentIndex + 1) % playlist.length;
       playCurrent();
     }
 
-    /*************** YouTube 상태 변경 ***************/
-    function onPlayerStateChange(event) {
+    function onStateChange(event) {
       if (event.data === YT.PlayerState.PLAYING) {
         isPlaying = true;
         lpContainer.classList.add("playing");
-        startProgressUpdater();
+        startProgress();
       }
       if (event.data === YT.PlayerState.PAUSED) {
         isPlaying = false;
         lpContainer.classList.remove("playing");
-        stopProgressUpdater();
+        stopProgress();
       }
       if (event.data === YT.PlayerState.ENDED) {
         isPlaying = false;
         lpContainer.classList.remove("playing");
-        stopProgressUpdater();
-        nextTrack(); // 자동 다음 곡
+        stopProgress();
+        nextTrack(); // 자동 다음곡
       }
     }
 
-    /*************** 재생바 업데이트 ***************/
-    function startProgressUpdater() {
-      stopProgressUpdater();
-      updateTimer = setInterval(function () {
-        if (!player || typeof player.getCurrentTime !== "function") return;
-        var current = player.getCurrentTime() || 0;
-        var total   = player.getDuration() || 0;
-
-        timeCurrentEl.textContent = formatTime(current);
-        timeTotalEl.textContent   = formatTime(total);
-
-        var ratio   = total > 0 ? (current / total) : 0;
-        var percent = Math.max(0, Math.min(100, ratio * 100));
-
+    function startProgress() {
+      stopProgress();
+      updateTimer = setInterval(() => {
+        var cur = player.getCurrentTime();
+        var total = player.getDuration();
+        timeCurrentEl.textContent = formatTime(cur);
+        timeTotalEl.textContent = formatTime(total);
+        var percent = (cur / total) * 100;
         progressFill.style.width = percent + "%";
-        progressKnob.style.left  = percent + "%";
+        progressKnob.style.left = percent + "%";
       }, 500);
     }
 
-    function stopProgressUpdater() {
-      if (updateTimer) {
-        clearInterval(updateTimer);
-        updateTimer = null;
-      }
+    function stopProgress() {
+      if (updateTimer) clearInterval(updateTimer);
+      updateTimer = null;
     }
 
-    /*************** 임베드 크기에 맞춰 동적 스케일 ***************/
     function resizeLayout() {
-      var container = lpContainer;
+      let c = lpContainer;
+      c.style.transform = "scale(1)";
+      let W = c.offsetWidth, H = c.offsetHeight;
 
-      // 기준 상태로 리셋 후 실제 크기 측정
-      container.style.transform = "scale(1)";
-      var naturalWidth  = container.offsetWidth;
-      var naturalHeight = container.offsetHeight;
+      let aW = window.innerWidth - 16;
+      let aH = window.innerHeight - 16;
 
-      var availWidth  = window.innerWidth - 16;   // 좌우 여유
-      var availHeight = window.innerHeight - 16;  // 위아래 여유
-
-      if (availWidth <= 0 || availHeight <= 0) return;
-
-      var scaleW = availWidth / naturalWidth;
-      var scaleH = availHeight / naturalHeight;
-      var scale  = Math.min(1, scaleW, scaleH); // 최대 1배
-
-      container.style.transform = "scale(" + scale + ")";
+      let scale = Math.min(1, aW / W, aH / H);
+      c.style.transform = `scale(${scale})`;
     }
 
-    window.addEventListener("load", function () {
-      resizeLayout();
-    });
+    window.addEventListener("load", resizeLayout);
   </script>
 </body>
 </html>

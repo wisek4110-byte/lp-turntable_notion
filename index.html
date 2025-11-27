@@ -240,9 +240,11 @@
 
     var currentIndex = 0;
     var player = null;
+    var isPlaying = false;
+    var startedOnce = false;
     var updateTimer = null;
 
-    // DOM 참조
+    // DOM
     var lpContainer   = document.getElementById("lp-container");
     var lpDisc        = document.getElementById("lp-disc");
     var btnPrev       = document.getElementById("btn-prev");
@@ -275,7 +277,7 @@
       timeTotalEl.textContent   = "0:00";
     }
 
-    /*************** YouTube API Ready (전역 함수 이름 필수!) ***************/
+    /*************** YouTube API Ready (전역 이름 필수) ***************/
     function onYouTubeIframeAPIReady() {
       player = new YT.Player("player", {
         height: "0",
@@ -298,12 +300,12 @@
     function onPlayerReady() {
       updateVisualForTrack();
 
-      // ▶ / ⏸ 버튼: 재생/일시정지 토글
+      // ▶ / ⏸ 버튼: 재생/일시정지
       btnPlay.addEventListener("click", function () {
-        togglePlay();
+        handlePlayToggle();
       });
 
-      // 이전/다음곡 버튼
+      // 이전/다음곡
       btnPrev.addEventListener("click", function () {
         prevTrack();
       });
@@ -313,37 +315,41 @@
       });
     }
 
-    /*************** 재생/일시정지 토글 (단순화 버전) ***************/
-    function togglePlay() {
-      if (!player || typeof player.getPlayerState !== "function") return;
+    /*************** 재생/일시정지 토글 – 우리 플래그 기준 ***************/
+    function handlePlayToggle() {
+      if (!player) return;
 
-      var state = player.getPlayerState();
-
-      // 아직 재생 안 했거나, 일시정지/끝난 상태 → 재생
-      if (
-        state === YT.PlayerState.UNSTARTED ||
-        state === YT.PlayerState.CUED ||
-        state === YT.PlayerState.PAUSED ||
-        state === YT.PlayerState.ENDED
-      ) {
-        player.playVideo();
+      // 아직 한 번도 안 틀었으면 현재 트랙부터 재생
+      if (!startedOnce) {
+        startedOnce = true;
+        playCurrent();
+        return;
       }
-      // 재생 중 → 일시정지
-      else if (state === YT.PlayerState.PLAYING) {
+
+      if (isPlaying) {
+        // 일시정지
         player.pauseVideo();
-      }
-      // BUFFERING 등도 "재생 쪽"으로 간주
-      else {
+        isPlaying = false;
+        lpContainer.classList.remove("playing");
+        stopProgressUpdater();
+      } else {
+        // 재생
         player.playVideo();
+        isPlaying = true;
+        lpContainer.classList.add("playing");
+        startProgressUpdater();
       }
     }
 
-    /*************** 곡 재생 / 이전 / 다음 ***************/
+    /*************** 현재 트랙 재생 ***************/
     function playCurrent() {
       if (!player) return;
       updateVisualForTrack();
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
+      isPlaying = true;
+      lpContainer.classList.add("playing");
+      startProgressUpdater();
     }
 
     function prevTrack() {
@@ -358,23 +364,15 @@
       playCurrent();
     }
 
-    /*************** Player 상태 변화 ***************/
+    /*************** YouTube 상태 변화 – 종료만 신경씀 ***************/
     function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PLAYING) {
-        lpContainer.classList.add("playing");
-        startProgressUpdater();
-      }
-
-      if (event.data === YT.PlayerState.PAUSED) {
-        lpContainer.classList.remove("playing");
-        stopProgressUpdater();
-      }
-
       if (event.data === YT.PlayerState.ENDED) {
+        isPlaying = false;
         lpContainer.classList.remove("playing");
         stopProgressUpdater();
-        nextTrack(); // 끝나면 자동 다음곡
+        nextTrack(); // 끝나면 자동 다음 곡
       }
+      // 재생/일시정지는 우리 플래그(handlePlayToggle)로만 처리
     }
 
     /*************** 재생바 업데이트 ***************/

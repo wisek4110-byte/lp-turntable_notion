@@ -14,22 +14,28 @@
       justify-content: center;
     }
 
-    /* 카드 컨테이너: 폭만 반응형, 높이는 내용만큼만 */
-    .lp-container {
+    /* 바깥 래퍼: 스케일링 + 높이 제어 */
+    .lp-wrapper {
       width: 100%;
-      max-width: 420px;
-      margin: 0 auto;
-      padding: 12px 16px 20px;
+      display: flex;
+      justify-content: center;
+      overflow: hidden; /* 스케일 줄인 만큼 아래 공백 안 보이게 */
+    }
+
+    /* 기준 크기 카드 (scale의 기준) */
+    .lp-container {
+      width: 420px;          /* 기준 가로 */
       box-sizing: border-box;
+      padding: 12px 16px 20px;
       border-radius: 12px;
       background: #fcfaf6;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transform-origin: top center;
     }
 
     .lp-disc-wrapper {
-      width: 100%;
-      max-width: 320px;
-      aspect-ratio: 1 / 1; /* 정사각형 LP 유지 */
+      width: 320px;
+      height: 320px;   /* 기준: 정사각형 */
       margin: 0 auto 16px;
       display: flex;
       align-items: center;
@@ -118,8 +124,7 @@
     .lp-container.playing #icon-pause { display: inline-block; }
 
     .progress-container {
-      width: 100%;
-      max-width: 360px;
+      width: 360px;
       margin: 0 auto 4px;
     }
 
@@ -175,42 +180,44 @@
 </head>
 <body>
 
-  <div class="lp-container" id="lp-container">
-    <!-- LP 디스크 -->
-    <div class="lp-disc-wrapper">
-      <div class="lp-disc" id="lp-disc"></div>
-    </div>
-
-    <!-- 곡 정보 -->
-    <div class="track-title" id="track-title">Track 1</div>
-    <div class="track-sub" id="track-sub">LP Playlist</div>
-
-    <!-- 컨트롤 버튼 -->
-    <div class="controls">
-      <button class="ctrl-btn prev" id="btn-prev" title="이전 곡">⏮</button>
-
-      <button class="ctrl-btn play" id="btn-play" title="재생/일시정지">
-        <span id="icon-play">▶</span>
-        <span id="icon-pause">⏸</span>
-      </button>
-
-      <button class="ctrl-btn next" id="btn-next" title="다음 곡">⏭</button>
-    </div>
-
-    <!-- 재생바 -->
-    <div class="progress-container">
-      <div class="progress-bar" id="progress-bar">
-        <div class="progress-fill" id="progress-fill"></div>
-        <div class="progress-knob" id="progress-knob"></div>
+  <div class="lp-wrapper" id="lp-wrapper">
+    <div class="lp-container" id="lp-container">
+      <!-- LP 디스크 -->
+      <div class="lp-disc-wrapper">
+        <div class="lp-disc" id="lp-disc"></div>
       </div>
-    </div>
-    <div class="time-info">
-      <span id="time-current">0:00</span>
-      <span id="time-total">0:00</span>
-    </div>
 
-    <!-- 유튜브 플레이어 (숨김) -->
-    <div id="player"></div>
+      <!-- 곡 정보 -->
+      <div class="track-title" id="track-title">Track 1</div>
+      <div class="track-sub" id="track-sub">LP Playlist</div>
+
+      <!-- 컨트롤 버튼 -->
+      <div class="controls">
+        <button class="ctrl-btn prev" id="btn-prev" title="이전 곡">⏮</button>
+
+        <button class="ctrl-btn play" id="btn-play" title="재생/일시정지">
+          <span id="icon-play">▶</span>
+          <span id="icon-pause">⏸</span>
+        </button>
+
+        <button class="ctrl-btn next" id="btn-next" title="다음 곡">⏭</button>
+      </div>
+
+      <!-- 재생바 -->
+      <div class="progress-container">
+        <div class="progress-bar" id="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+          <div class="progress-knob" id="progress-knob"></div>
+        </div>
+      </div>
+      <div class="time-info">
+        <span id="time-current">0:00</span>
+        <span id="time-total">0:00</span>
+      </div>
+
+      <!-- 유튜브 플레이어 (숨김) -->
+      <div id="player"></div>
+    </div>
   </div>
 
   <script>
@@ -245,17 +252,18 @@
     var updateTimer = null;
 
     // DOM
-    var lpContainer   = document.getElementById("lp-container");
-    var lpDisc        = document.getElementById("lp-disc");
-    var btnPrev       = document.getElementById("btn-prev");
-    var btnPlay       = document.getElementById("btn-play");
-    var btnNext       = document.getElementById("btn-next");
-    var trackTitleEl  = document.getElementById("track-title");
-    var trackSubEl    = document.getElementById("track-sub");
-    var progressFill  = document.getElementById("progress-fill");
-    var progressKnob  = document.getElementById("progress-knob");
-    var timeCurrentEl = document.getElementById("time-current");
-    var timeTotalEl   = document.getElementById("time-total");
+    var lpWrapper    = document.getElementById("lp-wrapper");
+    var lpContainer  = document.getElementById("lp-container");
+    var lpDisc       = document.getElementById("lp-disc");
+    var btnPrev      = document.getElementById("btn-prev");
+    var btnPlay      = document.getElementById("btn-play");
+    var btnNext      = document.getElementById("btn-next");
+    var trackTitleEl = document.getElementById("track-title");
+    var trackSubEl   = document.getElementById("track-sub");
+    var progressFill = document.getElementById("progress-fill");
+    var progressKnob = document.getElementById("progress-knob");
+    var timeCurrentEl= document.getElementById("time-current");
+    var timeTotalEl  = document.getElementById("time-total");
 
     /*************** 시간 포맷 ***************/
     function formatTime(sec) {
@@ -275,6 +283,25 @@
       progressKnob.style.left  = "0%";
       timeCurrentEl.textContent = "0:00";
       timeTotalEl.textContent   = "0:00";
+    }
+
+    /*************** 동적 크기 조절 (완전 스케일링) ***************/
+    function resizeLayout() {
+      // 스케일 리셋 후 실제 기준 크기 측정
+      lpContainer.style.transform = "scale(1)";
+      lpWrapper.style.height = "auto";
+
+      var naturalWidth  = lpContainer.offsetWidth;
+      var naturalHeight = lpContainer.offsetHeight;
+
+      var availWidth = document.documentElement.clientWidth - 16; // 양쪽 여유 8px
+
+      if (availWidth <= 0) return;
+
+      var scale = Math.min(1, availWidth / naturalWidth);
+
+      lpContainer.style.transform = "scale(" + scale + ")";
+      lpWrapper.style.height = (naturalHeight * scale) + "px";
     }
 
     /*************** YouTube API Ready (전역 이름 필수) ***************/
@@ -299,6 +326,7 @@
     /*************** Player Ready ***************/
     function onPlayerReady() {
       updateVisualForTrack();
+      resizeLayout();
 
       // ▶ / ⏸ 버튼: 재생/일시정지
       btnPlay.addEventListener("click", function () {
@@ -313,13 +341,15 @@
       btnNext.addEventListener("click", function () {
         nextTrack();
       });
+
+      window.addEventListener("resize", resizeLayout);
     }
 
     /*************** 재생/일시정지 토글 – 우리 플래그 기준 ***************/
     function handlePlayToggle() {
       if (!player) return;
 
-      // 아직 한 번도 안 틀었으면 현재 트랙부터 재생
+      // 처음 클릭이면 현재 트랙부터 재생
       if (!startedOnce) {
         startedOnce = true;
         playCurrent();
@@ -327,13 +357,11 @@
       }
 
       if (isPlaying) {
-        // 일시정지
         player.pauseVideo();
         isPlaying = false;
         lpContainer.classList.remove("playing");
         stopProgressUpdater();
       } else {
-        // 재생
         player.playVideo();
         isPlaying = true;
         lpContainer.classList.add("playing");
@@ -364,7 +392,7 @@
       playCurrent();
     }
 
-    /*************** YouTube 상태 변화 – 종료만 신경씀 ***************/
+    /*************** YouTube 상태 변화 – 끝났을 때만 처리 ***************/
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.ENDED) {
         isPlaying = false;
@@ -372,7 +400,6 @@
         stopProgressUpdater();
         nextTrack(); // 끝나면 자동 다음 곡
       }
-      // 재생/일시정지는 우리 플래그(handlePlayToggle)로만 처리
     }
 
     /*************** 재생바 업데이트 ***************/
@@ -400,6 +427,9 @@
         updateTimer = null;
       }
     }
+
+    // 폰트/레이아웃 로딩 후 한 번 더 안전하게
+    window.addEventListener("load", resizeLayout);
   </script>
 </body>
 </html>

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Notion LP Player</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8f5ef;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* 전체 컨테이너 (노션 블록 폭에 맞춰 반응) */
+    .lp-container {
+      width: 100%;
+      max-width: 420px;
+      margin: 20px auto;
+      padding: 12px 16px 20px;
+      box-sizing: border-box;
+      border-radius: 12px;
+      background: #fcfaf6;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .lp-disc-wrapper {
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 1 / 1; /* 정사각형 LP */
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .lp-disc {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+      animation: spin 3.2s linear infinite;
+      animation-play-state: paused; /* 기본 정지 */
+    }
+
+    .lp-container.playing .lp-disc {
+      animation-play-state: running;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* 트랙 정보 */
+    .track-title {
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #333;
+    }
+
+    .track-sub {
+      text-align: center;
+      font-size: 0.8rem;
+      margin-bottom: 12px;
+      color: #888;
+    }
+
+    /* 컨트롤 버튼 영역 */
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .ctrl-btn {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 6px 8px;
+      border-radius: 999px;
+      transition: background 0.15s ease, transform 0.1s ease;
+      color: #444;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(0,0,0,0.06);
+      transform: translateY(-1px);
+    }
+
+    .ctrl-btn:active {
+      transform: translateY(0);
+      background: rgba(0,0,0,0.12);
+    }
+
+    .ctrl-btn.play {
+      font-size: 1.4rem;
+      padding: 6px 14px;
+    }
+
+    /* 재생바 */
+    .progress-container {
+      width: 100%;
+      max-width: 360px;
+      margin: 0 auto 4px;
+    }
+
+    .progress-bar {
+      position: relative;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e0d8c8;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #c58c5c, #8b5e3c);
+      transition: width 0.15s linear;
+    }
+
+    .progress-knob {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 4px rgba(0,0,0,0.4);
+      pointer-events: none;
+    }
+
+    .time-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #777;
+      max-width: 360px;
+      margin: 2px auto 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="lp-container" id="lp-container">
+    <!-- LP 디스크 -->
+    <div class="lp-disc-wrapper" id="lp-disc-area">
+      <div class="lp-disc" id="lp-disc"></div>
+    </div>
+
+    <!-- 곡 정보 (원하면 텍스트 수정 가능) -->
+    <div class="track-title" id="track-title">Track 1</div>
+    <div class="track-sub" id="track-sub">LP Playlist</div>
+
+    <!-- 컨트롤 버튼 -->
+    <div class="controls">
+      <button class="ctrl-btn prev" id="btn-prev" title="이전 곡">⏮</button>
+      <button class="ctrl-btn play" id="btn-play" title="재생/일시정지">▶</button>
+      <button class="ctrl-btn next" id="btn-next" title="다음 곡">⏭</button>
+    </div>
+
+    <!-- 재생바 -->
+    <div class="progress-container">
+      <div class="progress-bar" id="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+        <div class="progress-knob" id="progress-knob"></div>
+      </div>
+    </div>
+    <div class="time-info">
+      <span id="time-current">0:00</span>
+      <span id="time-total">0:00</span>
+    </div>
+
+    <!-- 유튜브 플레이어 (숨김) -->
+    <div id="player"></div>
+  </div>
+
+  <script>
+    /*************************
+     * YouTube IFrame API 로드
+     *************************/
+    var tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.body.appendChild(tag);
+
+    /*************************
+     * 플레이리스트 / 이미지 / 제목
+     *************************/
+    var playlist = [
+      "kAAcl3nIe24",
+      "9uxYuIpvsjw",
+      "iv9rmTEaECw"
+    ];
+
+    // LP 이미지는 각 곡마다 다르게
+    var discImages = [
+      "lp-image1.png",
+      "lp-image2.png",
+      "lp-image3.png"
+    ];
+
+    // 곡 제목 (원하는 걸로 바꿔도 됨)
+    var trackTitles = [
+      "Track 1",
+      "Track 2",
+      "Track 3"
+    ];
+
+    var currentIndex = 0;
+    var player = null;
+    var startedOnce = false;
+    var audioEnabled = false;
+    var updateTimer = null;
+
+    // DOM 요소
+    var lpContainer   = document.getElementById("lp-container");
+    var lpDiscArea    = document.getElementById("lp-disc-area");
+    var lpDisc        = document.getElementById("lp-disc");
+    var btnPrev       = document.getElementById("btn-prev");
+    var btnPlay       = document.getElementById("btn-play");
+    var btnNext       = document.getElementById("btn-next");
+    var trackTitleEl  = document.getElementById("track-title");
+    var trackSubEl    = document.getElementById("track-sub");
+    var progressFill  = document.getElementById("progress-fill");
+    var progressKnob  = document.getElementById("progress-knob");
+    var timeCurrentEl = document.getElementById("time-current");
+    var timeTotalEl   = document.getElementById("time-total");
+
+    // 클릭/더블클릭 구분용
+    var clickTimer = null;
+    var CLICK_DELAY = 250;
+
+    /*************************
+     * 유틸: 시간 포맷 (초 → M:SS)
+     *************************/
+    function formatTime(sec) {
+      if (!isFinite(sec) || sec < 0) sec = 0;
+      var m = Math.floor(sec / 60);
+      var s = Math.floor(sec % 60);
+      return m + ":" + (s < 10 ? "0" + s : s);
+    }
+
+    /*************************
+     * 현재 곡 비주얼 갱신
+     *************************/
+    function updateVisualForTrack() {
+      lpDisc.style.backgroundImage = 'url("' + discImages[currentIndex] + '")';
+      trackTitleEl.textContent = trackTitles[currentIndex] || ("Track " + (currentIndex + 1));
+      trackSubEl.textContent = "LP Playlist • " + (currentIndex + 1) + " / " + playlist.length;
+      // 재생바 초기화
+      progressFill.style.width = "0%";
+      progressKnob.style.left = "0%";
+      timeCurrentEl.textContent = "0:00";
+      timeTotalEl.textContent   = "0:00";
+    }
+
+    /*************************
+     * YouTube API Ready
+     *************************/
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player("player", {
+        height: "0",
+        width: "0",
+        videoId: playlist[0],
+        playerVars: {
+          playsinline: 1,
+          autoplay: 0,
+          controls: 0,
+          rel: 0
+        },
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange
+        }
+      });
+    }
+
+    /*************************
+     * Player Ready
+     *************************/
+    function onPlayerReady() {
+      updateVisualForTrack();
+
+      // LP 클릭: 재생/일시정지
+      lpDiscArea.addEventListener("click", function() {
+        if (!audioEnabled) audioEnabled = true;
+        if (clickTimer) return;
+        clickTimer = setTimeout(function() {
+          clickTimer = null;
+          handleSingleClick();
+        }, CLICK_DELAY);
+      });
+
+      // LP 더블클릭: 다음곡
+      lpDiscArea.addEventListener("dblclick", function() {
+        if (clickTimer) {
+          clearTimeout(clickTimer);
+          clickTimer = null;
+        }
+        handleDoubleClick();
+      });
+
+      // 버튼들
+      btnPlay.addEventListener("click", function() {
+        handleSingleClick();
+      });
+
+      btnPrev.addEventListener("click", function() {
+        prevTrack();
+      });
+
+      btnNext.addEventListener("click", function() {
+        nextTrack();
+      });
+    }
+
+    /*************************
+     * 단일 클릭 처리 (재생/일시정지)
+     *************************/
+    function handleSingleClick() {
+      if (!player) return;
+
+      if (!startedOnce) {
+        // 첫 재생
+        playCurrent();
+        return;
+      }
+
+      var state = player.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) {
+        player.pauseVideo();
+        lpContainer.classList.remove("playing");
+        btnPlay.textContent = "▶";
+      } else {
+        player.playVideo();
+        lpContainer.classList.add("playing");
+        btnPlay.textContent = "⏸";
+      }
+    }
+
+    /*************************
+     * 더블클릭 처리 (다음곡)
+     *************************/
+    function handleDoubleClick() {
+      nextTrack();
+    }
+
+    /*************************
+     * 곡 재생 / 이전 / 다음
+     *************************/
+    function playCurrent() {
+      if (!player) return;
+      startedOnce = true;
+      updateVisualForTrack();
+      player.loadVideoById(playlist[currentIndex]);
+      player.playVideo();
+      lpContainer.classList.add("playing");
+      btnPlay.textContent = "⏸";
+      startProgressUpdater();
+    }
+
+    function prevTrack() {
+      if (!player) return;
+      currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+      playCurrent();
+    }
+
+    function nextTrack() {
+      if (!player) return;
+      currentIndex = (currentIndex + 1) % playlist.length;
+      playCurrent();
+    }
+
+    /*************************
+     * 상태 변화 콜백
+     *************************/
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        lpContainer.classList.add("playing");
+        btnPlay.textContent = "⏸";
+        startProgressUpdater();
+      }
+
+      if (event.data === YT.PlayerState.PAUSED) {
+        lpContainer.classList.remove("playing");
+        btnPlay.textContent = "▶";
+        stopProgressUpdater();
+      }
+
+      if (event.data === YT.PlayerState.ENDED) {
+        // 곡이 끝나면 자동으로 다음 곡
+        nextTrack();
+      }
+    }
+
+    /*************************
+     * 재생바 업데이트
+     *************************/
+    function startProgressUpdater() {
+      stopProgressUpdater(); // 중복 방지
+
+      updateTimer = setInterval(function() {
+        if (!player || typeof player.getCurrentTime !== "function") return;
+        var current = player.getCurrentTime() || 0;
+        var total   = player.getDuration() || 0;
+
+        timeCurrentEl.textContent = formatTime(current);
+        timeTotalEl.textContent   = formatTime(total);
+
+        var ratio = total > 0 ? (current / total) : 0;
+        var percent = Math.max(0, Math.min(100, ratio * 100));
+
+        progressFill.style.width = percent + "%";
+        progressKnob.style.left  = percent + "%";
+      }, 500);
+    }
+
+    function stopProgressUpdater() {
+      if (updateTimer) {
+        clearInterval(updateTimer);
+        updateTimer = null;
+      }
+    }
+  </script>
+</body>
+</html>

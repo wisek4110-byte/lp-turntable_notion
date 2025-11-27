@@ -1,384 +1,340 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <title>Notion LP Player</title>
+<meta charset="UTF-8">
+<title>Dynamic LP Player</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f8f5ef;
-      display: flex;
-      justify-content: center;
-    }
+<style>
+  body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    font-family: system-ui, sans-serif;
+    background: #f8f5ef;
+  }
 
-    /* 전체 컨테이너 (노션 블록 폭에 맞춰 반응) */
-    .lp-container {
-      width: 100%;
-      max-width: 270px;
-      margin: 20px auto;
-      padding: 12px 16px 20px;
-      box-sizing: border-box;
-      border-radius: 12px;
-      background: #fcfaf6;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  /* 전체를 완전 동적크기 (부모=노션블록) */
+  .lp-container {
+    width: 100%;
+    margin: 0;
+    padding: 2vw 0 4vw;
+    box-sizing: border-box;
+    background: #fcfaf6;
+  }
 
-      /* 🔽 추가: 전체 축소 */
-      transform: scale(0.8);
-      transform-origin: top center;
-    }
+  /* LP판 비율 유지: 1:1 완전 반응형 */
+  .lp-disc-wrapper {
+    width: 80%;
+    margin: 0 auto;
+    aspect-ratio: 1/1;
+    cursor: pointer;
+  }
 
-    .lp-disc-wrapper {
-      width: 100%;
-      max-width: 170px;
-      aspect-ratio: 1 / 1;
-      margin: 0 auto 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
+  .lp-disc {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    animation: spin 3.2s linear infinite;
+    animation-play-state: paused;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+  }
 
-    .lp-disc {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background-size: cover;
-      background-position: center;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-      animation: spin 3.2s linear infinite;
-      animation-play-state: paused;
-    }
+  .playing .lp-disc {
+    animation-play-state: running;
+  }
 
-    .lp-container.playing .lp-disc {
-      animation-play-state: running;
-    }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
 
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
+  .track-title {
+    text-align: center;
+    font-size: 4vw;
+    margin-top: 3vw;
+    font-weight: 600;
+  }
 
-    .track-title {
-      text-align: center;
-      font-size: 0.95rem;
-      font-weight: 600;
-      margin-bottom: 4px;
-      color: #333;
-    }
+  .track-sub {
+    text-align: center;
+    font-size: 3vw;
+    color: #777;
+    margin-bottom: 4vw;
+  }
 
-    .track-sub {
-      text-align: center;
-      font-size: 0.8rem;
-      margin-bottom: 12px;
-      color: #888;
-    }
+  /* 컨트롤 버튼들: 크기도 반응형 */
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 6vw;
+    margin-bottom: 3vw;
+  }
 
-    .controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 10px;
-      min-height: 40px;
-    }
+  .ctrl-btn {
+    font-size: 5vw;
+    width: 10vw;
+    height: 10vw;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.05);
+    cursor: pointer;
+    transition: 0.15s;
+  }
 
-    .ctrl-btn {
-      border: none;
-      background: none;
-      cursor: pointer;
-      font-size: 1.2rem;
-      padding: 6px 8px;
-      border-radius: 999px;
-      transition: background 0.15s ease, transform 0.1s ease;
-      color: #444;
-      line-height: 1;
-    }
+  .ctrl-btn:hover {
+    background: rgba(0,0,0,0.12);
+  }
 
-    .ctrl-btn:hover {
-      background: rgba(0,0,0,0.06);
-      transform: translateY(-1px);
-    }
+  /* 재생 버튼은 아이콘 두 개 겹쳐서 흔들림 방지 */
+  .ctrl-btn.play {
+    position: relative;
+  }
 
-    .ctrl-btn.play {
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.4rem;
-      padding: 0;
-    }
+  #icon-pause { display: none; }
+  .playing #icon-play { display: none; }
+  .playing #icon-pause { display: inline-block; }
 
-    .ctrl-btn.play span { display: inline-block; }
+  /* 재생바 */
+  .progress-container {
+    width: 80%;
+    margin: 0 auto;
+  }
 
-    #icon-pause { display: none; }
+  .progress-bar {
+    position: relative;
+    width: 100%;
+    height: 1.4vw;
+    background: #e2d8c6;
+    border-radius: 20px;
+  }
 
-    .lp-container.playing #icon-play { display: none; }
-    .lp-container.playing #icon-pause { display: inline-block; }
+  .progress-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: #c59c6c;
+    border-radius: inherit;
+    transition: width 0.15s linear;
+  }
 
-    .progress-container {
-      width: 100%;
-      max-width: 210px;
-      margin: 0 auto 4px;
-    }
+  .progress-knob {
+    position: absolute;
+    top: 50%;
+    width: 3vw;
+    height: 3vw;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+    transform: translate(-50%, -50%);
+  }
 
-    .progress-bar {
-      position: relative;
-      width: 100%;
-      height: 6px;
-      border-radius: 999px;
-      background: #e0d8c8;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      width: 0%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, #c58c5c, #8b5e3c);
-      transition: width 0.15s linear;
-    }
-
-    .progress-knob {
-      position: absolute;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 0 4px rgba(0,0,0,0.4);
-      pointer-events: none;
-    }
-
-    .time-info {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      color: #777;
-      max-width: 360px;
-      margin: 2px auto 0;
-      white-space: nowrap;
-    }
-  </style>
+  .time-info {
+    width: 80%;
+    margin: 1vw auto 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 3vw;
+    color: #777;
+  }
+</style>
 </head>
 <body>
 
-  <div class="lp-container" id="lp-container">
-    <div class="lp-disc-wrapper" id="lp-disc-area">
-      <div class="lp-disc" id="lp-disc"></div>
-    </div>
+<div class="lp-container" id="lp-container">
 
-    <div class="track-title" id="track-title">Track 1</div>
-    <div class="track-sub" id="track-sub">LP Playlist</div>
-
-    <div class="controls">
-      <button class="ctrl-btn prev" id="btn-prev">⏮</button>
-
-      <button class="ctrl-btn play" id="btn-play">
-        <span id="icon-play">▶</span>
-        <span id="icon-pause">⏸</span>
-      </button>
-
-      <button class="ctrl-btn next" id="btn-next">⏭</button>
-    </div>
-
-    <div class="progress-container">
-      <div class="progress-bar" id="progress-bar">
-        <div class="progress-fill" id="progress-fill"></div>
-        <div class="progress-knob" id="progress-knob"></div>
-      </div>
-    </div>
-
-    <div class="time-info">
-      <span id="time-current">0:00</span>
-      <span id="time-total">0:00</span>
-    </div>
-
-    <div id="player"></div>
+  <!-- LP판 -->
+  <div class="lp-disc-wrapper" id="lp-disc-area">
+    <div class="lp-disc" id="lp-disc"></div>
   </div>
 
-  <script>
-    /* YouTube API 로드 */
-    var tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.body.appendChild(tag);
+  <div class="track-title" id="track-title">Track 1</div>
+  <div class="track-sub" id="track-sub">LP Playlist</div>
 
-    /* Playlist */
-    var playlist = [
-      "kAAcl3nIe24",
-      "9uxYuIpvsjw",
-      "iv9rmTEaECw"
-    ];
+  <!-- 컨트롤 -->
+  <div class="controls">
+    <button class="ctrl-btn" id="btn-prev">⏮</button>
+    <button class="ctrl-btn play" id="btn-play">
+      <span id="icon-play">▶</span>
+      <span id="icon-pause">⏸</span>
+    </button>
+    <button class="ctrl-btn" id="btn-next">⏭</button>
+  </div>
 
-    var discImages = [
-      "lp-image1.png",
-      "lp-image2.png",
-      "lp-image3.png"
-    ];
+  <!-- 재생바 -->
+  <div class="progress-container">
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+      <div class="progress-knob" id="progress-knob"></div>
+    </div>
+  </div>
 
-    var trackTitles = [
-      "Track 1",
-      "Track 2",
-      "Track 3"
-    ];
+  <div class="time-info">
+    <span id="time-current">0:00</span>
+    <span id="time-total">0:00</span>
+  </div>
 
-    var currentIndex = 0;
-    var player = null;
-    var startedOnce = false;
-    var audioEnabled = false;
-    var updateTimer = null;
+  <div id="player"></div>
 
-    var lpContainer   = document.getElementById("lp-container");
-    var lpDiscArea    = document.getElementById("lp-disc-area");
-    var lpDisc        = document.getElementById("lp-disc");
-    var btnPrev       = document.getElementById("btn-prev");
-    var btnPlay       = document.getElementById("btn-play");
-    var btnNext       = document.getElementById("btn-next");
-    var trackTitleEl  = document.getElementById("track-title");
-    var trackSubEl    = document.getElementById("track-sub");
-    var progressFill  = document.getElementById("progress-fill");
-    var progressKnob  = document.getElementById("progress-knob");
-    var timeCurrentEl = document.getElementById("time-current");
-    var timeTotalEl   = document.getElementById("time-total");
+</div>
 
-    var clickTimer = null;
-    var CLICK_DELAY = 250;
+<script>
+  /* --- YouTube API Load --- */
+  var tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.body.appendChild(tag);
 
-    function formatTime(sec) {
-      if (!isFinite(sec) || sec < 0) sec = 0;
-      var m = Math.floor(sec / 60);
-      var s = Math.floor(sec % 60);
-      return m + ":" + (s < 10 ? "0" + s : s);
-    }
+  /* --- 플레이리스트 데이터 --- */
+  var playlist = [
+    "kAAcl3nIe24",
+    "9uxYuIpvsjw",
+    "iv9rmTEaECw"
+  ];
 
-    function updateVisualForTrack() {
-      lpDisc.style.backgroundImage = 'url("' + discImages[currentIndex] + '")';
-      trackTitleEl.textContent = trackTitles[currentIndex];
-      trackSubEl.textContent = "LP Playlist • " + (currentIndex + 1) + " / " + playlist.length;
-      progressFill.style.width = "0%";
-      progressKnob.style.left  = "0%";
-      timeCurrentEl.textContent = "0:00";
-      timeTotalEl.textContent   = "0:00";
-    }
+  var discImages = [
+    "lp1.png",
+    "lp2.png",
+    "lp3.png"
+  ];
 
-    function onYouTubeIframeAPIReady() {
-      player = new YT.Player("player", {
-        height: "0",
-        width: "0",
-        videoId: playlist[0],
-        playerVars: { playsinline: 1, autoplay: 0, controls: 0, rel: 0 },
-        events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
-      });
-    }
+  var trackTitles = [
+    "Track 1",
+    "Track 2",
+    "Track 3"
+  ];
 
-    function onPlayerReady() {
-      updateVisualForTrack();
+  var currentIndex = 0;
+  var player;
+  var startedOnce = false;
+  var updateTimer = null;
 
-      lpDiscArea.addEventListener("click", function () {
-        if (!audioEnabled) audioEnabled = true;
-        if (clickTimer) return;
-        clickTimer = setTimeout(function () {
-          clickTimer = null;
-          handleSingleClick();
-        }, CLICK_DELAY);
-      });
+  const lpCont = document.getElementById("lp-container");
+  const lpDisc = document.getElementById("lp-disc");
+  const lpDiscArea = document.getElementById("lp-disc-area");
 
-      lpDiscArea.addEventListener("dblclick", function () {
-        if (clickTimer) {
-          clearTimeout(clickTimer);
-          clickTimer = null;
-        }
-        handleDoubleClick();
-      });
+  const btnPlay = document.getElementById("btn-play");
+  const btnPrev = document.getElementById("btn-prev");
+  const btnNext = document.getElementById("btn-next");
 
-      btnPlay.addEventListener("click", handleSingleClick);
-      btnPrev.addEventListener("click", prevTrack);
-      btnNext.addEventListener("click", nextTrack);
-    }
+  const progressFill = document.getElementById("progress-fill");
+  const progressKnob = document.getElementById("progress-knob");
 
-    function handleSingleClick() {
-      if (!player) return;
+  const timeCurrent = document.getElementById("time-current");
+  const timeTotal = document.getElementById("time-total");
 
-      if (!startedOnce) {
-        playCurrent();
-        return;
+  const trackTitleEl = document.getElementById("track-title");
+  const trackSubEl = document.getElementById("track-sub");
+
+  function updateVisual(){
+    lpDisc.style.backgroundImage = `url(${discImages[currentIndex]})`;
+    trackTitleEl.textContent = trackTitles[currentIndex];
+    trackSubEl.textContent = `LP Playlist • ${currentIndex+1}/${playlist.length}`;
+    progressFill.style.width = "0%";
+    progressKnob.style.left = "0%";
+    timeCurrent.textContent = "0:00";
+    timeTotal.textContent = "0:00";
+  }
+
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player("player", {
+      videoId: playlist[0],
+      height: "0",
+      width: "0",
+      playerVars: {
+        autoplay: 0,
+        controls: 0
+      },
+      events: {
+        onReady: onPlayerReady,
+        onStateChange: onStateChange
       }
+    });
+  }
 
-      var state = player.getPlayerState();
-      if (state === YT.PlayerState.PLAYING) {
-        player.pauseVideo();
-        lpContainer.classList.remove("playing");
-      } else {
-        player.playVideo();
-        lpContainer.classList.add("playing");
-      }
+  function onPlayerReady(){
+    updateVisual();
+
+    lpDiscArea.addEventListener("click", () => togglePlay());
+    lpDiscArea.addEventListener("dblclick", nextTrack);
+
+    btnPlay.addEventListener("click", togglePlay);
+    btnPrev.addEventListener("click", prevTrack);
+    btnNext.addEventListener("click", nextTrack);
+  }
+
+  function togglePlay(){
+    if(!startedOnce){
+      playCurrent();
+      return;
     }
-
-    function handleDoubleClick() { nextTrack(); }
-
-    function playCurrent() {
-      if (!player) return;
-      startedOnce = true;
-      updateVisualForTrack();
-      player.loadVideoById(playlist[currentIndex]);
+    let state = player.getPlayerState();
+    if(state === YT.PlayerState.PLAYING){
+      player.pauseVideo();
+      lpCont.classList.remove("playing");
+    } else {
       player.playVideo();
-      lpContainer.classList.add("playing");
-      startProgressUpdater();
+      lpCont.classList.add("playing");
     }
+  }
 
-    function prevTrack() {
-      currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-      playCurrent();
+  function playCurrent(){
+    startedOnce = true;
+    updateVisual();
+    player.loadVideoById(playlist[currentIndex]);
+    player.playVideo();
+    lpCont.classList.add("playing");
+    startBar();
+  }
+
+  function nextTrack(){
+    currentIndex = (currentIndex+1) % playlist.length;
+    playCurrent();
+  }
+
+  function prevTrack(){
+    currentIndex = (currentIndex-1+playlist.length)%playlist.length;
+    playCurrent();
+  }
+
+  function onStateChange(e){
+    if(e.data === YT.PlayerState.PLAYING){
+      lpCont.classList.add("playing");
+      startBar();
     }
-
-    function nextTrack() {
-      currentIndex = (currentIndex + 1) % playlist.length;
-      playCurrent();
+    if(e.data === YT.PlayerState.PAUSED){
+      lpCont.classList.remove("playing");
     }
-
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PLAYING) {
-        lpContainer.classList.add("playing");
-        startProgressUpdater();
-      }
-      if (event.data === YT.PlayerState.PAUSED) {
-        lpContainer.classList.remove("playing");
-        stopProgressUpdater();
-      }
-      if (event.data === YT.PlayerState.ENDED) {
-        nextTrack();
-      }
+    if(e.data === YT.PlayerState.ENDED){
+      nextTrack();
     }
+  }
 
-    function startProgressUpdater() {
-      stopProgressUpdater();
-      updateTimer = setInterval(function () {
-        if (!player) return;
-        var current = player.getCurrentTime();
-        var total   = player.getDuration();
+  function startBar(){
+    if(updateTimer) clearInterval(updateTimer);
 
-        timeCurrentEl.textContent = formatTime(current);
-        timeTotalEl.textContent   = formatTime(total);
+    updateTimer = setInterval(()=>{
+      let cur = player.getCurrentTime();
+      let dur = player.getDuration();
 
-        var percent = (current / total) * 100;
-        progressFill.style.width = percent + "%";
-        progressKnob.style.left  = percent + "%";
-      }, 500);
-    }
+      timeCurrent.textContent = format(cur);
+      timeTotal.textContent = format(dur);
 
-    function stopProgressUpdater() {
-      if (updateTimer) {
-        clearInterval(updateTimer);
-        updateTimer = null;
-      }
-    }
-  </script>
+      let percent = (cur/dur)*100;
+      progressFill.style.width = percent+"%";
+      progressKnob.style.left = percent+"%";
+    },300);
+  }
+
+  function format(sec){
+    sec = Math.floor(sec);
+    let m = Math.floor(sec/60);
+    let s = sec%60;
+    return m+":"+(s<10?"0"+s:s);
+  }
+</script>
+
 </body>
 </html>
-

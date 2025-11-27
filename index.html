@@ -260,7 +260,7 @@
     var player = null;
     var startedOnce = false;
     var audioEnabled = false;
-    var isPlaying = false;   // 🔸 현재 재생 상태를 직접 추적
+    var isPlaying = false;
     var updateTimer = null;
 
     // DOM
@@ -276,9 +276,6 @@
     var progressKnob  = document.getElementById("progress-knob");
     var timeCurrentEl = document.getElementById("time-current");
     var timeTotalEl   = document.getElementById("time-total");
-
-    var clickTimer = null;
-    var CLICK_DELAY = 250;
 
     /*************** 시간 포맷 ***************/
     function formatTime(sec) {
@@ -330,20 +327,7 @@
       // LP 클릭: 재생/일시정지
       lpDiscArea.addEventListener("click", function () {
         if (!audioEnabled) audioEnabled = true;
-        if (clickTimer) return;
-        clickTimer = setTimeout(function () {
-          clickTimer = null;
-          handleSingleClick();
-        }, CLICK_DELAY);
-      });
-
-      // LP 더블클릭: 다음 곡
-      lpDiscArea.addEventListener("dblclick", function () {
-        if (clickTimer) {
-          clearTimeout(clickTimer);
-          clickTimer = null;
-        }
-        handleDoubleClick();
+        handleSingleClick();
       });
 
       // 버튼
@@ -363,7 +347,7 @@
       window.addEventListener("resize", resizeLayout);
     }
 
-    /*************** 단일 / 더블 클릭 ***************/
+    /*************** 단일 클릭 = 재생/일시정지 ***************/
     function handleSingleClick() {
       if (!player) return;
 
@@ -372,18 +356,11 @@
         return;
       }
 
-      // 🔸 getPlayerState 대신 isPlaying 플래그로 토글
       if (isPlaying) {
         player.pauseVideo();
-        // onPlayerStateChange에서 isPlaying=false, 클래스 정리, 타이머 정리
       } else {
         player.playVideo();
-        // onPlayerStateChange에서 isPlaying=true, 클래스/타이머 처리
       }
-    }
-
-    function handleDoubleClick() {
-      nextTrack();
     }
 
     /*************** 재생 / 이전 / 다음 ***************/
@@ -393,7 +370,6 @@
       updateVisualForTrack();
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
-      // 실제 재생 시작 시 onPlayerStateChange에서 isPlaying 갱신
     }
 
     function prevTrack() {
@@ -456,7 +432,6 @@
 
     /*************** 임베드 크기에 맞춰 동적 스케일 ***************/
     function resizeLayout() {
-      var baseWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--base-width')) || 420;
       var container = lpContainer;
 
       // 기준 상태로 리셋 후 실제 크기 측정
